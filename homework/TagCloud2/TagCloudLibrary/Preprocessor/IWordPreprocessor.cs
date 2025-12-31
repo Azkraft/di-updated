@@ -2,5 +2,5 @@
 
 public interface IWordPreprocessor
 {
-	List<string> Process(List<string> words);
+	List<string> Process(IEnumerable<string> words);
 }

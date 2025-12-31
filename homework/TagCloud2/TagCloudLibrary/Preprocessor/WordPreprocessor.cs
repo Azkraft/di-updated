@@ -5,36 +5,53 @@ namespace TagCloudLibrary.Preprocessor;
 
 public class WordPreprocessor(WordPreprocessorOptions options) : IWordPreprocessor
 {
-	public List<string> Process(List<string> words)
+	public List<string> Process(IEnumerable<string> words)
 	{
 		return GetAnalyzedWords(words)
-			.Where(t => !options.ExcludedPartsOfSpeech.Contains(t.PartOfSpeech))
-			.Select(t => t.Word)
+			.Where(t => options.SelectedPartsOfSpeech.Contains(t.PartOfSpeech))
+			.Select(t => t.Word.ToLower())
 			.ToList();
 	}
 
-	public static List<WordWithPartOfSpeech> GetAnalyzedWords(List<string> words)
+	private static List<WordWithPartOfSpeech> GetAnalyzedWords(IEnumerable<string> words)
 	{
+		var inputFilePath = Path.Combine(AppContext.BaseDirectory, Path.GetRandomFileName());
+		var outputFilePath = Path.Combine(AppContext.BaseDirectory, Path.GetRandomFileName());
+
+		File.WriteAllText(inputFilePath, string.Join('\n', words));
+		File.Create(outputFilePath)
+			.Close();
+
 		var startInfo = new ProcessStartInfo
 		{
-			FileName = Path.Combine(Directory.GetCurrentDirectory(), "mystem.exe"),
-			Arguments = "-i --format json",
+			FileName = Path.Combine(AppContext.BaseDirectory, "mystem.exe"),
+			Arguments = $"-i --format json \"{inputFilePath}\" \"{outputFilePath}\"",
 			UseShellExecute = false,
-			CreateNoWindow = true,
-			RedirectStandardInput = true,
-			RedirectStandardOutput = true
+			CreateNoWindow = true
 		};
 
 		string output;
-		using (var myStemProcess = new Process { StartInfo = startInfo })
+		try
 		{
+			using var myStemProcess = new Process { StartInfo = startInfo };
 			myStemProcess.Start();
-			myStemProcess.StandardInput.Write(string.Join('\n', words));
-			output = myStemProcess.StandardOutput.ReadToEnd();
 			myStemProcess.WaitForExit();
+			output = File.ReadAllText(outputFilePath);
+		}
+		finally
+		{
+			File.Delete(inputFilePath);
+			File.Delete(outputFilePath);
 		}
 
-		var jsonOutput = JsonSerializer.Deserialize<List<WordAnalysis>>(output);
-		return jsonOutput.Select(t => t.ToWordWithPartOfSpeech()).ToList();
+		var jsonOption = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+		var jsonOutput = output
+			.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+			.Select(t => JsonSerializer.Deserialize<List<WordAnalysis>>(t, jsonOption))
+			.Where(t => t.Count > 0)
+			.Select(t => t[0].ToWordWithPartOfSpeech())
+			.ToList();
+
+		return jsonOutput;
 	}
 }

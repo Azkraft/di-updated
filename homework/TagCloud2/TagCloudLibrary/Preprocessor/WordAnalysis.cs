@@ -11,7 +11,8 @@ public class WordAnalysis
 	{
 		var firstGramme = Analysis.First().Gramme;
 		var endPartOfSpeechText = firstGramme.IndexOfAny([',', '=']);
-		var partOfSpeech = JsonSerializer.Deserialize<PartOfSpeech>(firstGramme[..endPartOfSpeechText]);
+		var jsonOption = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+		var partOfSpeech = JsonSerializer.Deserialize<PartOfSpeech>($"\"{firstGramme[..endPartOfSpeechText]}\"", jsonOption);
 
 		return new(Text, partOfSpeech);
 	}

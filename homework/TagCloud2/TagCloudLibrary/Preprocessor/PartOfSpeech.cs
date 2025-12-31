@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace TagCloudLibrary.Preprocessor;
 
-[JsonConverter(typeof(JsonStringEnumConverter))]
+[JsonConverter(typeof(JsonStringEnumMemberConverter))]
 public enum PartOfSpeech
 {
 	[EnumMember(Value = "A")]

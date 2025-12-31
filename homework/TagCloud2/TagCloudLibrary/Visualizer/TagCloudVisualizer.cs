@@ -1,78 +1,73 @@
 ﻿using SkiaSharp;
-using System.Drawing;
 using TagCloudLibrary.Layouter;
 
 namespace TagCloudLibrary.Visualizer;
 
-public class TagCloudVisualizer : ITagCloudVisualizer
+public class TagCloudVisualizer(TagCloudVisualizerOptions options) : ITagCloudVisualizer
 {
-	private const int pictureBorderSize = 20;
-	private const int lineWidth = 5;
-
-	public SKImage DrawTagCloud(List<TextInBox> tagCloud)
+	public SKImage DrawTagCloud(IEnumerable<PlacedText> cloud)
 	{
-		var boundingRectangle = GetBoundingRectangle(tagCloud.Select(t
-			=> new Rectangle((int)t.Box.Location.X, (int)t.Box.Location.Y, (int)t.Box.Width, (int)t.Box.Height)));
-		var pictureOrigin = boundingRectangle.Location - new Size(pictureBorderSize, pictureBorderSize);
+		var tagCloud = cloud.ToList();
+		var boundingRectangle = GetBoundingRectangle(tagCloud.Select(t => t.Place));
+		var pictureOrigin = boundingRectangle.Location - new SKSize(options.PictureBorderSize, options.PictureBorderSize);
 
 		var imageInfo = new SKImageInfo(
-			width: boundingRectangle.Width + 2 * pictureBorderSize,
-			height: boundingRectangle.Height + 2 * pictureBorderSize,
+			width: (int)Math.Round(boundingRectangle.Width + 2 * options.PictureBorderSize),
+			height: (int)Math.Round(boundingRectangle.Height + 2 * options.PictureBorderSize),
 			colorType: SKColorType.Rgb888x,
 			alphaType: SKAlphaType.Opaque);
 		using var surface = SKSurface.Create(imageInfo);
 		var canvas = surface.Canvas;
 
-		canvas.Clear(SKColor.Parse("#000000"));
+		canvas.Clear(options.BackgroundColor);
 		DrawWords(tagCloud, pictureOrigin, canvas);
 
 		return surface.Snapshot();
 	}
 
-	private static Rectangle GetBoundingRectangle(IEnumerable<Rectangle> rects)
+	private static SKRect GetBoundingRectangle(IEnumerable<SKRect> rects)
 	{
-		var right = int.MinValue;
-		var top = int.MaxValue;
-		var left = int.MaxValue;
-		var bottom = int.MinValue;
+		var result = default(SKRect?);
 
 		foreach (var rectangle in rects)
-		{
-			right = int.Max(right, rectangle.Right);
-			top = int.Min(top, rectangle.Top);
-			left = int.Min(left, rectangle.Left);
-			bottom = int.Max(bottom, rectangle.Bottom);
-		}
+			result = SKRect.Union(result ?? rectangle, rectangle);
 
-		var width = right - left;
-		var height = bottom - top;
-		return new(left, top, width, height);
+		return result.Value;
 	}
 
-	private static void DrawWords(List<TextInBox> tagCloud, Point pictureOrigin, SKCanvas canvas)
+	private static SKColor GetRandomColor()
 	{
 		var rand = new Random();
+
+		var color = new byte[3];
+		rand.NextBytes(color);
+
+		var lineColor = new SKColor(
+			red: color[0],
+			green: color[1],
+			blue: color[2]);
+
+		return lineColor;
+	}
+
+	private void DrawWords(List<PlacedText> tagCloud, SKPoint pictureOrigin, SKCanvas canvas)
+	{
 		foreach (var word in tagCloud)
 		{
-			var color = new byte[3];
-			rand.NextBytes(color);
-			var lineColor = new SKColor(
-				red: color[0],
-				green: color[1],
-				blue: color[2]);
-
 			var paint = new SKPaint
 			{
-				Color = lineColor,
-				StrokeWidth = lineWidth,
+				Color = options.ForegroundColor ?? GetRandomColor(),
 				IsAntialias = true,
-				Style = SKPaintStyle.Stroke
+				Style = SKPaintStyle.Fill,
 			};
+
+			word.Font.MeasureText(word.Text, out var textMeasurement, paint);
 
 			canvas.DrawText(
 				word.Text,
-				word.Box.Location.X,
-				word.Box.Location.Y,
+				word.Place.Location.X + word.Place.Width / 2 - textMeasurement.Width / 2 - pictureOrigin.X,
+				word.Place.Location.Y + word.Place.Height / 2 + textMeasurement.Height / 2 - pictureOrigin.Y,
+				word.Font,
 				paint);
 		}
 	}

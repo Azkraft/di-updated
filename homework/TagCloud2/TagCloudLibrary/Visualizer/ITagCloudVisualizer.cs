@@ -5,5 +5,5 @@ namespace TagCloudLibrary.Visualizer;
 
 public interface ITagCloudVisualizer
 {
-	SKImage DrawTagCloud(List<TextInBox> tagCloud);
+	SKImage DrawTagCloud(IEnumerable<PlacedText> tagCloud);
 }

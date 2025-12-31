@@ -1,3 +1,5 @@
-﻿namespace TagCloudLibrary;
+﻿using SkiaSharp;
 
-public record class TagCloudOptions(float MinFontSize, float MaxFontSize);
+namespace TagCloudLibrary;
+
+public record class TagCloudOptions(SKTypeface? Typeface, float MinFontSize, float MaxFontSize, float TextGap);

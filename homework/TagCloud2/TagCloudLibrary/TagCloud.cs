@@ -7,7 +7,7 @@ namespace TagCloudLibrary;
 
 public class TagCloud(IWordPreprocessor preprocessor, ICloudLayouter layouter, ITagCloudVisualizer visualizer, TagCloudOptions options)
 {
-	private readonly List<TextInBox> cloud = [];
+	private readonly List<PlacedText> cloud = [];
 
 	public void BuildTagTree(IEnumerable<string> words)
 	{
@@ -21,9 +21,10 @@ public class TagCloud(IWordPreprocessor preprocessor, ICloudLayouter layouter, I
 		foreach (var group in preparedWords)
 		{
 			var fontSize = options.MinFontSize + fontCoeff * (group.Count - 1);
-			var text = SKTextBlob.Create(group.Word, new SKFont(SKTypeface.Default, fontSize));
-			var rectangle = layouter.PutNextRectangle(new((int)text.Bounds.Width, (int)text.Bounds.Height));
-			cloud.Add(new TextInBox(text, new(rectangle.Left, rectangle.Top, rectangle.Right, rectangle.Bottom)));
+			var font = new SKFont(options.Typeface ?? SKTypeface.Default, fontSize);
+			font.MeasureText(group.Word, out var textMeasurement);
+			var rectangle = layouter.PutNextRectangle(textMeasurement.Size + new SKSize(options.TextGap * 2, options.TextGap * 2));
+			cloud.Add(new PlacedText(group.Word, font, rectangle));
 		}
 	}
 

@@ -25,7 +25,12 @@ internal class Program
 
 		var words = GetWordsFromFile(args.WordsFilePath);
 		var image = GetTagCloudImage(words);
-		SaveTagCloudImage(args.ImageFilePath, image);
+		SaveTagCloudImage(
+			args.ImageFilePath,
+			image,
+			args.ImageWidth,
+			args.ImageHeight,
+			Enum.Parse<SKEncodedImageFormat>(args.ImageFormat));
 	}
 
 	private static void SetUpContainer(CommandLineArguments args)
@@ -36,8 +41,18 @@ internal class Program
 			GetAndValidatePartsOfSpeech(args.SelectedPartsOfSpeech).ToHashSet());
 		builder.RegisterInstance(wordPreprocessorOptions);
 
-		var tagCloudOptions = new TagCloudOptions(args.MinFontSize, args.MaxFontSize);
+		var tagCloudOptions = new TagCloudOptions(
+			args.FontFamilyName is null ? null : SKTypeface.FromFamilyName(args.FontFamilyName),
+			args.MinFontSize,
+			args.MaxFontSize,
+			args.TextGap);
 		builder.RegisterInstance(tagCloudOptions);
+
+		var tagCloudVisualizerOptions = new TagCloudVisualizerOptions(
+			args.PictureBorderSize,
+			SKColor.Parse(args.BackgroudColor),
+			args.ForegroundColor is null ? null : SKColor.Parse(args.ForegroundColor));
+		builder.RegisterInstance(tagCloudVisualizerOptions);
 
 		builder.RegisterType<WordPreprocessor>().As<IWordPreprocessor>();
 		builder.Register(c => new CircularCloudLayouter(new())).As<ICloudLayouter>();
@@ -82,10 +97,19 @@ internal class Program
 
 	private static string[] GetWordsFromFile(string path) => File.ReadAllText(path).Split();
 
-	private static void SaveTagCloudImage(string path, SKImage image)
+	private static void SaveTagCloudImage(string path, SKImage image, int? width, int? height, SKEncodedImageFormat format)
 	{
-		using var data = image.Encode();
+		var imageInfo = new SKImageInfo(
+			width: width ?? image.Width,
+			height: height ?? image.Height,
+			colorType: SKColorType.Rgb888x,
+			alphaType: SKAlphaType.Opaque);
+
+		using var bitmap = SKBitmap.FromImage(image).Resize(imageInfo, SKFilterQuality.High);
+		using var data = image.Encode(format, 80);
 		using var stream = File.OpenWrite(path);
+		if (data is null)
+			throw new NullReferenceException("Can't encode bitmap");
 		data.SaveTo(stream);
 	}
 }

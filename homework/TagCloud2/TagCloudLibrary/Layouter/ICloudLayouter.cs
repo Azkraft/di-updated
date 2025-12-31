@@ -5,5 +5,5 @@ namespace TagCloudLibrary.Layouter;
 
 public interface ICloudLayouter
 {
-	Rectangle PutNextRectangle(Size rectangleSize);
+	SKRect PutNextRectangle(SKSize rectangleSize);
 }

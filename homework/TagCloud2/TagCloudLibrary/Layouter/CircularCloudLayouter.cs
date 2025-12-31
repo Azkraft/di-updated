@@ -1,17 +1,17 @@
-﻿using System.Drawing;
+﻿using SkiaSharp;
 using static System.Math;
 
 namespace TagCloudLibrary.Layouter;
 
-public class CircularCloudLayouter(Point center) : ICloudLayouter
+public class CircularCloudLayouter(SKPoint center) : ICloudLayouter
 {
     private const double radiusStep = 1;
     private const double angleStep = .01;
     private double radius = 0;
     private double angle = 0;
-    private readonly List<Rectangle> placedRectangles = [];
+    private readonly List<SKRect> placedRectangles = [];
 
-    public Rectangle PutNextRectangle(Size rectangleSize)
+    public SKRect PutNextRectangle(SKSize rectangleSize)
     {
         if (rectangleSize.Width <= 0 || rectangleSize.Height <= 0)
             throw new ArgumentException("Recatngle size should be greater then zero", nameof(rectangleSize));
@@ -21,12 +21,12 @@ public class CircularCloudLayouter(Point center) : ICloudLayouter
         return rectangle;
     }
 
-    private Rectangle FindRectangleWithCorrectPosition(Size size)
+    private SKRect FindRectangleWithCorrectPosition(SKSize size)
     {
         if (radius == 0)
         {
             radius += radiusStep;
-            return new Rectangle(center - size / 2, size);
+            return SKRect.Create(center - new SKSize(size.Width / 2, size.Height / 2), size);
         }
 
         while (!CanPlaceRectangle(CreateRectangleAwayFromCenter(center, angle, radius, size)))
@@ -43,7 +43,7 @@ public class CircularCloudLayouter(Point center) : ICloudLayouter
         return PullRectangleToCenter(size);
     }
 
-    private bool CanPlaceRectangle(Rectangle rectangle)
+    private bool CanPlaceRectangle(SKRect rectangle)
     {
         foreach (var placedRectangle in placedRectangles)
             if (rectangle.IntersectsWith(placedRectangle))
@@ -55,7 +55,7 @@ public class CircularCloudLayouter(Point center) : ICloudLayouter
     /// <summary>
     /// Pulls a rectangle toward the center of the cloud until it is centered (radius + circumscribingCircleRadius = 0) or intersects with another rectangle.
     /// </summary>
-    private Rectangle PullRectangleToCenter(Size size)
+    private SKRect PullRectangleToCenter(SKSize size)
     {
         var currentRadius = radius;
         var circumscribingCircleRadius = GetCircumscribingCircleRadius(size);
@@ -71,21 +71,21 @@ public class CircularCloudLayouter(Point center) : ICloudLayouter
     /// <summary>
     /// The method creates a rectangle at a distance from the cloud center to the circumscribed circle of a rectangle.
     /// </summary>
-    private static Rectangle CreateRectangleAwayFromCenter(Point center, double angle, double distance, Size size)
+    private static SKRect CreateRectangleAwayFromCenter(SKPoint center, double angle, double distance, SKSize size)
     {
         var circumscribingCircleRadius = GetCircumscribingCircleRadius(size);
-        var location = CreatePointAwayFromCenter(center, angle, distance + circumscribingCircleRadius) - size / 2;
+        var location = CreatePointAwayFromCenter(center, angle, distance + circumscribingCircleRadius) - new SKSize(size.Width / 2, size.Height / 2);
 
-        return new Rectangle(location, size);
+        return SKRect.Create(location, size);
     }
 
-    private static double GetCircumscribingCircleRadius(Size size)
+    private static double GetCircumscribingCircleRadius(SKSize size)
         => Sqrt(
             size.Width / 2 * (size.Width / 2)
             + size.Height / 2 * (size.Height / 2));
 
-    private static Point CreatePointAwayFromCenter(Point center, double angle, double distance)
+    private static SKPoint CreatePointAwayFromCenter(SKPoint center, double angle, double distance)
         => new(
-            center.X + (int)Round(distance * Cos(angle)),
-            center.Y + (int)Round(distance * Sin(angle)));
+            center.X + (float)(distance * Cos(angle)),
+            center.Y + (float)(distance * Sin(angle)));
 }
